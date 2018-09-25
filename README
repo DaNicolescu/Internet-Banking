@@ -1,0 +1,67 @@
+Nicolescu Daniel-Marian
+324CB
+
+Format trimitere mesaje:
+	Clientul trimite mesaje serverului conform specificatiilor din enunt.
+	Serverul trimite in caz de cod de eroare doar codul, iar in caz de succes
+trimite intreg mesajul (codul de eroare este interpretat in client).
+
+client.c:
+	createLog creeaza fisierul de log al clientului.
+	updateLog scrie in fisierul de log al clientului comanda data de client
+si raspunsul serverului. Functia este folosita si pentru a afisa erorile primite
+la apeluri de functii(bind, connect, etc.).
+	In main se creeaza socketurile pentru serviciul IBANK si pentru UNLOCK
+si se realizeaza conexiunea TCP.
+	Select monitorizeaza 3 descriptori de fisiere: socketul TCP,
+socketul UDP si stdin.
+	In cazul citirii de la tastatura se parseaza comanda si se determina daca
+e nevoie sa fie trimisa la server. In cazul comenzii de unlock se creeaza un
+alt mesaj ce va fi trimis catre server, de asemenea acesta este trimis la
+socketul UDP.
+	In cazul in care se primeste un mesaj pe socketul TCP se determina ce
+comanda a fost data de catre client, apoi se scriu in fisier rezultatele.
+In cazul comenzii de transfer, se citeste de la tastatura daca se confirma 
+sau nu transferul, se trimite mesaj catre server, apoi se scriu rezultatele.
+	In cazul in care se primeste mesaj pe socketul UDP, fie se scrie mesajul
+in logFile, fie se trimite parola secreta.
+
+server.c:
+	Informatiile din fisierul cu datele clientilor sunt memorate intr-un vector
+de structuri card. Pentru a pastra evidenta clientilor logati se foloseste o
+lista (activeUsersList), iar pentru transferurile ce urmeaza sa fie efectuate
+sau anulate se foloseste o alta lista (pendingTransfersList).
+	readData citeste datele din fisier si le pune in vector.
+	loginCommand actualizeaza lista de clienti activi. In lista sunt pastrate
+si cardurile pe care clientii au incercat sa se logheze, dar nu au reusit
+(pin gresit, sau card blocat).
+	logoutCommand elimina din lista de clienti activi pe cel cu id-ul dat ca 
+parametru.
+	listsoldCommand intoarce soldul clientului cu id-ul dat ca parametru.
+	transferCommand actualizeaza lista de transferuri. Intoarce fie cod de 
+eroare, fie indexul cardului catre care se realizeaza transferul.
+	cancelTransfer anuleaza transferul.
+	confirmTransfer realizeaza transferul.
+	removeActiveUser elimina clientul din lista de clienti activi chiar daca nu
+e logat.
+	sendQuitToClients anunta clientii de inchiderea serverului.
+	freeMemory elibereaza memoria.
+	checkLockedCard verifica daca un card e blocat.
+	unlockCard deblocheaza cardul. Intoarce 0 in caz de succes, altfel, cod de
+eroare.
+	In main se creeaza socketurile pentru serviciile IBANK si UNLOCK.
+	select monitorizeaza 4 tipuri de descriptori de fisiere: stdin, socketul
+pe care face listen serviciul IBANK (listenSocketFd), socketuri TCP folosite
+pentru conexiunea cu clientii si socketul UDP pentru servicul UNLOCK.
+	In cazul in care se citeste de la tastatura, se verifica daca ce s-a citit
+este o comanda quit, se elibereaza memoria, apoi se inchid socketurile.
+	In cazul in care exista o cerere de conectare de la un client 
+(crtFd == listenSocketFd), se face accept, apoi se introduce noul socket 
+cu care se realizeaza comunicarea server-client in readFds.
+	In cazul in care se primeste un mesaj pe socketul UDP, se verifica daca e o
+comanda de unlock (in acest caz serverul fie cere parola secreta, fie intoarce
+un cod de eroare), sau e un mesaj ce contine parola secreta (in acest caz
+serverul fie deblocheaza cardul, fie intoarce cod de eroare).
+	In cazul in care se primeste un mesaj pe un socket TCP cu care se realizeaza
+comunicarea cu clientii, se determina ce comanda a trimis clientul si se
+trimite raspunsul corespunzator.
